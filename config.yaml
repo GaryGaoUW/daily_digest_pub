@@ -1,0 +1,153 @@
+timezone: America/Toronto
+output_path: output.html
+
+email:
+  subject_prefix: "Daily Digest"
+  smtp_host: smtp.gmail.com
+  smtp_port: 465
+
+rss:
+  timeout_seconds: 10
+  retries: 2
+  user_agent: "Mozilla/5.0 (compatible; DailyDigestBot/1.0)"
+
+# category must match a key in news_categories
+news_sources:
+  - name: BBC World
+    url: https://feeds.bbci.co.uk/news/world/rss.xml
+    category: world
+  - name: NPR News
+    url: https://feeds.npr.org/1001/rss.xml
+    category: world
+  - name: TechCrunch
+    url: https://techcrunch.com/feed/
+    category: tech
+  - name: Hacker News
+    url: https://hnrss.org/frontpage
+    category: tech
+  - name: Ars Technica
+    url: https://feeds.arstechnica.com/arstechnica/index
+    category: tech
+  - name: CNBC Top News
+    url: https://www.cnbc.com/id/100003114/device/rss/rss.html
+    category: finance
+
+news_categories:
+  world: "World"
+  tech: "Tech"
+  finance: "Finance"
+
+news_limits:
+  max_items_per_source: 8
+  max_chars_per_item: 500
+
+reading_sources:
+  - name: The Conversation (Canada)
+    url: https://theconversation.com/ca/articles.atom
+    category: reading
+  - name: The Conversation (US)
+    url: https://theconversation.com/us/articles.atom
+    category: reading
+
+reading_limits:
+  max_items_per_source: 10
+  max_chars_per_item: 6000
+  min_chars: 1500
+
+market:
+  finnhub_base_url: https://finnhub.io/api/v1
+  timeout_seconds: 10
+  earnings_lookahead_days: 7
+  # shown as chips in the email header
+  headline_symbols: [QQQ, SPY, INTC]
+  stocks:
+    us: [NVDA, AMD, QQQ, SPY, INTC, ORCL, RKLB, SPCX]
+    ca: [QQC.TO, CHPS.TO, VDY.TO, XEQT.TO]
+  # daily extras: tickers from today's news first, then random picks from pool
+  extras:
+    us:
+      count: 3
+      pool: [TSLA, META, AAPL, MSFT, GOOGL, AMZN, AVGO, TSM, PLTR, ARM, MU, NFLX, LLY, COIN, SMCI]
+    ca:
+      count: 2
+      pool: [SHOP.TO, RY.TO, TD.TO, ENB.TO, CNQ.TO, BN.TO, CSU.TO, ATD.TO, CP.TO, SU.TO]
+
+llm:
+  base_url: https://api.deepseek.com
+  model: deepseek-flash
+  # "disabled" = fast/cheap non-thinking mode; "enabled" = slower, more careful reasoning
+  thinking: disabled
+  temperature: 0.3
+  max_tokens: 4000
+  timeout_seconds: 90
+
+# {materials} is replaced with collected text; prompts must mention "json" for DeepSeek JSON mode
+prompts:
+  news:
+    system: |
+      You are a rigorous news editor. Write only from the provided material and never invent
+      facts, numbers or quotes that are not in it. Output must be a valid json object.
+    user: |
+      Below are today's news items. Each starts with [index] and is labeled with category and source.
+
+      Tasks:
+      1. For each category (world / tech / finance) pick the most important items, at most 5 per
+         category. Merge duplicate stories and cover different sources within a category.
+      2. headline: keep or tighten the original English headline.
+      3. summary: 1-2 plain-English sentences with the core facts.
+      4. ref: the index of the source item (integer).
+      5. top: the 3 things most worth knowing today across all categories, one short sentence each.
+      6. tickers: up to 4 stock symbols of listed companies central to today's news. Use plain
+         symbols for US stocks (e.g. NVDA) and add .TO for TSX listings (e.g. SHOP.TO). Omit if unsure.
+
+      Example json output:
+      {"top": ["...", "...", "..."], "tickers": ["ORCL"],
+       "items": [{"ref": 0, "category": "world", "headline": "...", "summary": "..."}]}
+
+      Material:
+      {materials}
+  market:
+    system: |
+      You are an objective market analyst. Write only from the provided quotes and headlines and
+      never invent reasons or numbers. Output must be a valid json object.
+    user: |
+      Below are previous-session closes for US and Canadian stocks, the upcoming earnings calendar,
+      and today's finance headlines.
+
+      Tasks:
+      1. overview: 2-4 sentences on overall market performance (US first, then Canada).
+      2. highlights: 2-4 stocks with the most notable moves or upcoming earnings, one sentence each
+         in note. Only state a cause if a headline explicitly mentions it; otherwise describe the move.
+
+      Example json output:
+      {"overview": "...", "highlights": [{"symbol": "NVDA", "note": "..."}]}
+
+      Material:
+      {materials}
+  reading:
+    system: |
+      You are a patient English teacher for intermediate (about B2) adult learners who want to read
+      more and master grammar. Output must be a valid json object.
+    user: |
+      Below is an English article. Select one continuous passage of 120-200 words that is dense and
+      contains typical long, complex sentences. Copy it verbatim; do not rewrite.
+
+      Tasks:
+      1. passage: the selected passage.
+      2. sentences: split the passage into sentences; for each give en (original) and plain
+         (a simpler paraphrase in plain English).
+      3. skeleton: break down the 2-3 hardest sentences: subject, predicate, object (object or
+         complement, empty string if none), modifiers (list of {text, role}, e.g. "relative clause
+         modifying X"), and note (one sentence on what makes it hard and how to read it).
+      4. collocations: 4-6 phrases worth learning, each with phrase, meaning, usage (how it differs
+         from similar expressions) and example (a new example sentence).
+
+      Example json output:
+      {"title": "...", "passage": "...",
+       "sentences": [{"en": "...", "plain": "..."}],
+       "skeleton": [{"sentence": "...", "subject": "...", "predicate": "...", "object": "...",
+                     "modifiers": [{"text": "...", "role": "..."}], "note": "..."}],
+       "collocations": [{"phrase": "...", "meaning": "...", "usage": "...", "example": "..."}]}
+
+      Article:
+      {materials}

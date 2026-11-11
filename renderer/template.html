@@ -1,0 +1,158 @@
+{% set accent = {"world": "#dc2626", "tech": "#2563eb", "finance": "#059669", "market": "#d97706", "reading": "#7c3aed"} %}
+{% set pill = "display:inline-block;margin-top:6px;padding:1px 8px;background:#f3f4f6;border-radius:10px;font-size:12px;color:#6b7280;" %}
+{% macro section(title, color) %}<h2 style="margin:32px 0 14px;font-size:18px;line-height:1.3;color:#111827;border-left:4px solid {{ color }};padding-left:10px;">{{ title }}</h2>{% endmacro %}
+{% set h3 = "margin:18px 0 8px;font-size:16px;color:#374151;" %}
+{% set muted = "color:#6b7280;font-size:13px;" %}
+{% set missing_p = "margin:8px 0;color:#9ca3af;font-style:italic;" %}
+{% set card = "margin:0 0 14px;padding:0 0 12px;border-bottom:1px solid #f3f4f6;" %}
+{% set td = "padding:6px 8px;border-bottom:1px solid #f3f4f6;font-size:14px;" %}
+{% set th = "padding:6px 8px;border-bottom:2px solid #e5e7eb;font-size:13px;color:#6b7280;text-align:left;" %}
+{% set badge = "padding:0 5px;border-radius:3px;font-size:11px;font-weight:normal;" %}
+{% macro quote_table(rows) %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+  <tr><th style="{{ th }}">Symbol</th><th style="{{ th }}text-align:right;">Close</th><th style="{{ th }}text-align:right;">Change</th><th style="{{ th }}text-align:right;">%</th></tr>
+  {% for q in rows %}
+  {% if q.error %}
+  <tr><td style="{{ td }}font-weight:600;">{{ q.symbol|ticker }}</td><td colspan="3" style="{{ td }}text-align:right;color:#9ca3af;">Unavailable</td></tr>
+  {% else %}
+  {% set color = "#047857" if q.change >= 0 else "#b91c1c" %}
+  <tr>
+    <td style="{{ td }}font-weight:600;">{{ q.symbol|ticker }}{% if q.tag == "news" %} <span style="{{ badge }}background:#fee2e2;color:#b91c1c;">news</span>{% elif q.tag == "random" %} <span style="{{ badge }}background:#f3f4f6;color:#6b7280;">random</span>{% endif %}</td>
+    <td style="{{ td }}text-align:right;">{{ "%.2f"|format(q.price) }}</td>
+    <td style="{{ td }}text-align:right;color:{{ color }};">{{ "%+.2f"|format(q.change) }}</td>
+    <td style="{{ td }}text-align:right;color:{{ color }};">{{ "%+.2f"|format(q.change_pct) }}%</td>
+  </tr>
+  {% endif %}
+  {% endfor %}
+</table>
+{% endmacro %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title }}</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;">
+<tr><td align="center" style="padding:16px 8px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#ffffff;border-radius:8px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1f2937;font-size:15px;line-height:1.65;">
+<tr><td style="background:#111827;border-radius:8px 8px 0 0;padding:22px 20px 20px;">
+  <p style="margin:0;font-size:12px;letter-spacing:1px;color:#9ca3af;">{{ date_str }}</p>
+  <h1 style="margin:4px 0 0;font-size:24px;color:#ffffff;">{{ title }}</h1>
+  {% if market and market.headline %}
+  <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:14px;"><tr>
+    {% for q in market.headline %}
+    <td style="padding:6px 12px;background:#1f2937;border-radius:6px;">
+      <span style="font-size:12px;color:#9ca3af;">{{ q.symbol|ticker }}</span><br>
+      <span style="font-size:15px;font-weight:700;color:{{ '#34d399' if q.change >= 0 else '#f87171' }};">{{ "%+.2f"|format(q.change_pct) }}%</span>
+    </td>
+    {% if not loop.last %}<td style="width:8px;"></td>{% endif %}
+    {% endfor %}
+  </tr></table>
+  {% endif %}
+</td></tr>
+<tr><td style="padding:4px 20px 24px;">
+
+  {% if highlights %}
+  <div style="margin:20px 0 0;padding:14px 16px;background:#eff6ff;border-radius:8px;">
+    <p style="margin:0 0 4px;font-size:12px;font-weight:700;letter-spacing:1px;color:#1d4ed8;">TODAY</p>
+    {% for h in highlights %}
+    <p style="margin:6px 0 0;"><strong style="color:#1d4ed8;">{{ loop.index }}</strong>&nbsp; {{ h|ticker }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# ---------- News ---------- #}
+  {% for group in news_groups %}
+  {{ section(group.label, accent.get(group.key, "#6b7280")) }}
+  {% for n in group["items"] %}
+  <div style="{{ card }}">
+    <p style="margin:0;font-weight:600;color:#111827;">
+      {% if n.url %}<a href="{{ n.url }}" style="color:#1d4ed8;text-decoration:none;">{{ n.headline }}</a>{% else %}{{ n.headline }}{% endif %}
+    </p>
+    <p style="margin:4px 0 0;">{{ n.summary|ticker }}</p>
+    {% if n.source %}<span style="{{ pill }}">{{ n.source }}</span>{% endif %}
+  </div>
+  {% else %}
+  <p style="{{ missing_p }}">Not available today</p>
+  {% endfor %}
+  {% endfor %}
+
+  {# ---------- Market ---------- #}
+  {{ section("Markets", accent.market) }}
+  {% if market %}
+    {% if market.overview %}<p style="margin:0 0 12px;">{{ market.overview|ticker }}</p>{% endif %}
+    {% for h in market.highlights %}
+    <p style="margin:0 0 8px;padding:8px 12px;background:#fffbeb;border-radius:6px;"><strong>{{ h.symbol|ticker }}</strong>&nbsp; {{ h.note|ticker }}</p>
+    {% endfor %}
+    {% if market.us %}
+    <h3 style="{{ h3 }}">US <span style="{{ muted }}font-weight:normal;">close {{ market.us_as_of }}</span></h3>
+    {{ quote_table(market.us) }}
+    {% endif %}
+    {% if market.ca %}
+    <h3 style="{{ h3 }}">Canada <span style="{{ muted }}font-weight:normal;">close {{ market.ca_as_of }}</span></h3>
+    {{ quote_table(market.ca) }}
+    {% endif %}
+    <h3 style="{{ h3 }}">Earnings (next {{ market.lookahead }} days)</h3>
+    {% for e in market.earnings %}
+    <p style="margin:0 0 4px;"><strong>{{ e.symbol|ticker }}</strong> {{ e.date }}{% if e.hour == "bmo" %} before open{% elif e.hour == "amc" %} after close{% endif %}{% if e.eps_estimate is not none %}<span style="{{ muted }}"> · EPS est. {{ "%.2f"|format(e.eps_estimate) }}</span>{% endif %}</p>
+    {% else %}
+    <p style="{{ missing_p }}">No upcoming earnings on the watchlist</p>
+    {% endfor %}
+  {% else %}
+  <p style="{{ missing_p }}">Not available today</p>
+  {% endif %}
+
+  {# ---------- Reading ---------- #}
+  {{ section("English Reading", accent.reading) }}
+  {% if reading %}
+    <p style="margin:0 0 8px;font-weight:600;color:#111827;">
+      {% if reading.url %}<a href="{{ reading.url }}" style="color:#1d4ed8;text-decoration:none;">{{ reading.title }}</a>{% else %}{{ reading.title }}{% endif %}
+      {% if reading.source %}<span style="{{ muted }}font-weight:normal;"> · {{ reading.source }}</span>{% endif %}
+    </p>
+    <div style="margin:0 0 12px;padding:12px 14px;background:#f9fafb;border-left:4px solid #93c5fd;font-family:Georgia,'Times New Roman',serif;font-size:16px;line-height:1.75;">{{ reading.passage }}</div>
+
+    <h3 style="{{ h3 }}">1. Sentence by sentence</h3>
+    {% for s in reading.sentences %}
+    <p style="margin:0 0 2px;font-family:Georgia,'Times New Roman',serif;">{{ s.en }}</p>
+    <p style="margin:0 0 10px;color:#4b5563;">→ {{ s.plain }}</p>
+    {% endfor %}
+
+    <h3 style="{{ h3 }}">2. Sentence structure</h3>
+    {% for k in reading.skeleton %}
+    <div style="margin:0 0 14px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:6px;">
+      <p style="margin:0 0 6px;font-family:Georgia,'Times New Roman',serif;">{{ k.sentence }}</p>
+      <p style="margin:0;font-size:14px;"><span style="background:#dbeafe;padding:1px 4px;border-radius:3px;">Subject</span> {{ k.subject }}</p>
+      <p style="margin:2px 0 0;font-size:14px;"><span style="background:#fee2e2;padding:1px 4px;border-radius:3px;">Predicate</span> {{ k.predicate }}</p>
+      {% if k.object %}<p style="margin:2px 0 0;font-size:14px;"><span style="background:#dcfce7;padding:1px 4px;border-radius:3px;">Object</span> {{ k.object }}</p>{% endif %}
+      {% for m in k.modifiers %}
+      <p style="margin:2px 0 0;font-size:14px;"><span style="background:#fef3c7;padding:1px 4px;border-radius:3px;">Modifier</span> {{ m.text }} <span style="{{ muted }}">— {{ m.role }}</span></p>
+      {% endfor %}
+      {% if k.note %}<p style="margin:6px 0 0;font-size:14px;color:#4b5563;">Tip: {{ k.note }}</p>{% endif %}
+    </div>
+    {% endfor %}
+
+    <h3 style="{{ h3 }}">3. Key phrases</h3>
+    {% for c in reading.collocations %}
+    <div style="{{ card }}">
+      <p style="margin:0;"><strong>{{ c.phrase }}</strong> — {{ c.meaning }}</p>
+      {% if c.usage %}<p style="margin:2px 0 0;font-size:14px;color:#4b5563;">{{ c.usage }}</p>{% endif %}
+      {% if c.example %}<p style="margin:2px 0 0;font-size:14px;font-style:italic;">e.g. {{ c.example }}</p>{% endif %}
+    </div>
+    {% endfor %}
+  {% else %}
+  <p style="{{ missing_p }}">Not available today</p>
+  {% endif %}
+
+  <div style="margin:32px 0 0;padding-top:14px;border-top:1px solid #e5e7eb;{{ muted }}font-size:12px;line-height:1.6;">
+    {% if missing %}<p style="margin:0 0 4px;">Missing this issue: {{ missing|join(", ") }} (see run logs)</p>{% endif %}
+    <p style="margin:0;">Summaries are AI-generated and may contain errors. Market data from Finnhub / Yahoo Finance, for reference only, not investment advice.</p>
+  </div>
+
+</td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>

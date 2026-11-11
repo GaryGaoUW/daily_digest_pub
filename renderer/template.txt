@@ -1,0 +1,88 @@
+{{ title }}
+{{ date_str }}
+{% if highlights %}
+
+== TODAY ==
+{% for h in highlights %}
+{{ loop.index }}. {{ h|ticker }}
+{% endfor %}
+{% endif %}
+{% for group in news_groups %}
+
+== {{ group.label }} ==
+{% for n in group["items"] %}
+- {{ n.headline }}
+  {{ n.summary|ticker }}
+{% if n.url %}
+  {{ n.url }}
+{% endif %}
+{% else %}
+Not available today
+{% endfor %}
+{% endfor %}
+
+== Markets ==
+{% if market %}
+{% if market.overview %}
+{{ market.overview|ticker }}
+{% endif %}
+{% for h in market.highlights %}
+* {{ h.symbol|ticker }}: {{ h.note|ticker }}
+{% endfor %}
+{% for label, rows in [("US", market.us), ("Canada", market.ca)] if rows %}
+
+{{ label }}
+{% for q in rows %}
+{% if q.error %}
+  {{ q.symbol|ticker }}  unavailable
+{% else %}
+  {{ q.symbol|ticker }}  {{ "%.2f"|format(q.price) }}  {{ "%+.2f"|format(q.change) }} ({{ "%+.2f"|format(q.change_pct) }}%){% if q.tag %} [{{ q.tag }}]{% endif %}
+{% endif %}
+{% endfor %}
+{% endfor %}
+
+Earnings
+{% for e in market.earnings %}
+  {{ e.symbol|ticker }}  {{ e.date }} {{ e.hour }}
+{% else %}
+  No upcoming earnings on the watchlist
+{% endfor %}
+{% else %}
+Not available today
+{% endif %}
+
+== English Reading ==
+{% if reading %}
+{{ reading.title }}
+
+{{ reading.passage }}
+
+-- Sentence by sentence --
+{% for s in reading.sentences %}
+{{ s.en }}
+  -> {{ s.plain }}
+
+{% endfor %}
+-- Sentence structure --
+{% for k in reading.skeleton %}
+{{ k.sentence }}
+  Subject: {{ k.subject }} | Predicate: {{ k.predicate }} | Object: {{ k.object }}
+{% for m in k.modifiers %}
+  Modifier: {{ m.text }} — {{ m.role }}
+{% endfor %}
+  Tip: {{ k.note }}
+
+{% endfor %}
+-- Key phrases --
+{% for c in reading.collocations %}
+* {{ c.phrase }} — {{ c.meaning }}
+  {{ c.usage }}
+  e.g. {{ c.example }}
+{% endfor %}
+{% else %}
+Not available today
+{% endif %}
+{% if missing %}
+
+Missing this issue: {{ missing|join(", ") }}
+{% endif %}
