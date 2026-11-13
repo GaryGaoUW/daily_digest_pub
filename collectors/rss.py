@@ -12,15 +12,22 @@ from collectors.base import BaseCollector, Item
 
 logger = logging.getLogger(__name__)
 
+_DROP_RE = re.compile(r"<(h[1-6]|figure|figcaption|script|style)\b[^>]*>.*?</\1>", re.I | re.S)
+_BLOCK_RE = re.compile(r"</?(?:p|div|br|li|ul|ol|blockquote)\b[^>]*>", re.I)
 _INLINE_TAG_RE = re.compile(r"</?(?:a|em|strong|i|b|span|abbr|cite|code|sup|sub|mark|small)\b[^>]*>", re.I)
 _TAG_RE = re.compile(r"<[^>]+>")
-_WS_RE = re.compile(r"\s+")
+_SPACE_RE = re.compile(r"[^\S\n]+")
+_PARA_RE = re.compile(r"\s*\n\s*")
 
 
 def clean_html(text: str) -> str:
+    # Headings and captions are dropped so they don't get glued into body text
+    text = _DROP_RE.sub("\n", text)
     # Inline tags are removed without a space so "<em>word</em>." stays "word."
-    text = _TAG_RE.sub(" ", _INLINE_TAG_RE.sub("", text))
-    return _WS_RE.sub(" ", html.unescape(text)).strip()
+    text = _INLINE_TAG_RE.sub("", text)
+    text = _TAG_RE.sub(" ", _BLOCK_RE.sub("\n", text))
+    text = _SPACE_RE.sub(" ", html.unescape(text))
+    return _PARA_RE.sub("\n\n", text).strip()
 
 
 def _entry_text(entry: Any) -> str:

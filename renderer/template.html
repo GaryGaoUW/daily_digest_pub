@@ -111,7 +111,7 @@
       {% if reading.url %}<a href="{{ reading.url }}" style="color:#1d4ed8;text-decoration:none;">{{ reading.title }}</a>{% else %}{{ reading.title }}{% endif %}
       {% if reading.source %}<span style="{{ muted }}font-weight:normal;"> · {{ reading.source }}</span>{% endif %}
     </p>
-    <div style="margin:0 0 12px;padding:12px 14px;background:#f9fafb;border-left:4px solid #93c5fd;font-family:Georgia,'Times New Roman',serif;font-size:16px;line-height:1.75;">{{ reading.passage }}</div>
+    <div style="margin:0 0 12px;padding:12px 14px;background:#f9fafb;border-left:4px solid #93c5fd;font-family:Georgia,'Times New Roman',serif;font-size:16px;line-height:1.75;white-space:pre-line;">{{ reading.passage }}</div>
 
     <h3 style="{{ h3 }}">1. Sentence by sentence</h3>
     {% for s in reading.sentences %}

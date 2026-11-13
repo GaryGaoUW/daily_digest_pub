@@ -129,8 +129,10 @@ prompts:
       You are a patient English teacher for intermediate (about B2) adult learners who want to read
       more and master grammar. Output must be a valid json object.
     user: |
-      Below is an English article. Select one continuous passage of 120-200 words that is dense and
-      contains typical long, complex sentences. Copy it verbatim; do not rewrite.
+      Below is an English article (paragraphs are separated by blank lines). Select one continuous
+      passage of 120-200 words that is dense and contains typical long, complex sentences. Copy it
+      verbatim; do not rewrite. Use body sentences only: no subheadings, image captions, author bios
+      or navigation text such as "Read more".
 
       Tasks:
       1. passage: the selected passage.
