@@ -1,6 +1,8 @@
 name: Daily Digest
 
 on:
+  # Primary trigger: an external scheduler (cron-job.org) calls workflow_dispatch at 07:30 Toronto.
+  # GitHub cron below is only a backup; it is often hours late.
   schedule:
     # 07:30 America/Toronto: EDT (UTC-4) and EST (UTC-5); the guard step keeps only the matching one
     - cron: "30 11 * * *"
@@ -9,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   digest:
@@ -17,19 +20,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: DST guard
+      - name: Schedule guard
         id: guard
         env:
           EVENT_NAME: ${{ github.event_name }}
           SCHEDULE: ${{ github.event.schedule }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
         run: |
           if [ "$EVENT_NAME" != "schedule" ]; then
             echo "run=true" >> "$GITHUB_OUTPUT"; exit 0
           fi
           if [ "$(TZ=America/Toronto date +%z)" = "-0400" ]; then expected="30 11 * * *"; else expected="30 12 * * *"; fi
-          if [ "$SCHEDULE" = "$expected" ]; then run=true; else run=false; fi
-          echo "Schedule '$SCHEDULE', expected '$expected' -> run=$run"
-          echo "run=$run" >> "$GITHUB_OUTPUT"
+          if [ "$SCHEDULE" != "$expected" ]; then
+            echo "Schedule '$SCHEDULE' is not today's DST slot, skipping"
+            echo "run=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          since=$(date -u -d 'TZ="America/Toronto" today 00:00' +%Y-%m-%dT%H:%M:%SZ)
+          sent=$(gh run list -R "$REPO" -w daily_run.yml -e workflow_dispatch -s success -L 20 \
+                   --json createdAt --jq "[.[] | select(.createdAt >= \"$since\")] | length")
+          if [ "$sent" -gt 0 ]; then
+            echo "Digest already sent today by workflow_dispatch, backup skipped"
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "No digest yet today, backup run proceeds"
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - uses: actions/setup-python@v5
         if: steps.guard.outputs.run == 'true'
